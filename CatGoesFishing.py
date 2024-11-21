@@ -55,6 +55,8 @@ class Hook():
         self.pos = vec(catPos[0] + fishingRodLength*math.cos(self.theta), catPos[1] - fishingRodLength*math.sin(self.theta))
 
     def castHelper(self):
+        if self.pos[1] > 650:
+            self.cycleState()
         a = self.f / self.m
         if self.loadDir == 'backwards':
             self.v[0] = -math.pi*fishingRodLength/25/DT
@@ -65,7 +67,7 @@ class Hook():
         self.prevPos = self.pos
         self.pos = self.pos + (self.v * DT)
 
-        print(self.f, self.v, self.pos)
+        
         self.f = vec(0,0)
             
     def addGravity(self):
@@ -89,6 +91,7 @@ class Hook():
     def draw(self):
         x, y = self.pos[0], self.pos[1]
         drawCircle(float(x), float(y), self.r)
+        drawLine(float(x), float(y), int(catPos[0]), int(catPos[1]))
     
     def __repr__(self):
         return(self.state.name)
@@ -107,7 +110,7 @@ def resetApp(app):
 def onStep(app):
     if app.paused: return
     app.hook.verletUpdate()
-    print(app.hook.theta)
+    
 
 def onKeyPress(app, key):
     if 'space' in key:
@@ -126,6 +129,8 @@ def redrawAll(app):
     #Draw Cat
     catX, catY = catPos[0], catPos[1]
     drawRect(float(catX), float(catY), 100, 100, align = 'center')
+    drawRect(600, 650, 1000, 500, fill='blue') #ocean
+    drawRect(600, 550, 1000, 500, fill='green', align='right-top')
     #Draw Hook
     app.hook.draw()
 
