@@ -19,28 +19,28 @@ def distance(v1, v2):
     distVector = v1-v2
     return np.dot(distVector, distVector)**0.5
 
-class State(Enum):
+
+class hookState(Enum):
     REST = 1
     LOAD = 2
-    CAST = 3
-    REEL = 4
-        
+    CASTED = 3
+
 class Hook():
+
     def __init__(self):
-        self.state = State.REST
+        self.state = hookState.REST
         self.r = 10
         self.f = vec(0, 0)
         self.m = 10
         self.theta = 0 #radians
         self.loadDir = 'backwards'
-        self.pos = vec(catPos[0] + fishingRodLength*math.cos(self.theta), catPos[1] + fishingRodLength*math.sin(self.theta))
-        
-        #used for verlet integration
+        self.pos = vec(catPos[0] + fishingRodLength, catPos[1])
+        #used for euler integration
         self.v = vec(0,0)
-        self.prevPos = self.pos - (self.v * DT)
+        
     
     def cycleState(self):
-        self.state = State((self.state.value % 4) + 1)
+        self.state = hookState((self.state.value % 3) + 1)
         return self.state
 
     def loadHelper(self):
@@ -53,40 +53,18 @@ class Hook():
         if self.loadDir == 'forwards':
             self.theta -= math.pi/25
         self.pos = vec(catPos[0] + fishingRodLength*math.cos(self.theta), catPos[1] - fishingRodLength*math.sin(self.theta))
+  
 
-    def castHelper(self):
-        if self.pos[1] > 650:
-            self.cycleState()
-        a = self.f / self.m
-        if self.loadDir == 'backwards':
-            self.v[0] = -math.pi*fishingRodLength/25/DT
-        else:
-            self.v[0] = math.pi*fishingRodLength/25/DT
-        self.v = self.v + a * DT
-
-        self.prevPos = self.pos
-        self.pos = self.pos + (self.v * DT)
-
-        
-        self.f = vec(0,0)
-            
-    def addGravity(self):
-        self.f += vec(0, int(G))
-
-    def reelHelper(self):
-        pass
-
-    def verletUpdate(self):
-        if self.state == State.REST: #do nothing (for now..)
+    def eulerUpdate(self):
+        if self.state == hookState.REST: #do nothing (for now..)
             pass
-        elif self.state == State.LOAD: #polar
+        elif self.state == hookState.LOAD: #polar
             self.loadHelper()
-        elif self.state == State.CAST: #kinematics
-            self.addGravity()
-            self.castHelper()
-        elif self.state == State.REEL: #polar
-            self.v = vec(0,0)
-            pass
+        elif self.state == hookState.CASTED:
+            while self.theta > 0:
+                self.theta -= math.pi/25
+                self.pos = vec(catPos[0] + fishingRodLength*math.cos(self.theta), catPos[1] - fishingRodLength*math.sin(self.theta))
+            
 
     def draw(self):
         x, y = self.pos[0], self.pos[1]
@@ -97,6 +75,7 @@ class Hook():
         return(self.state.name)
 
 
+
 def onAppStart(app):
     app.width, app.height = 3840, 2160
     app.paused = False
@@ -104,22 +83,83 @@ def onAppStart(app):
     app.stepsPerSecond = 60
     resetApp(app)
 
+
 def resetApp(app):
-    app.objects = []
+    app.objects = [app.hook]
+
+
+class rodState(Enum):
+    REST = 1
+    CAST = 2
+    REEL = 3
+
+class Rod(Hook):
+
+    def __init__(self, f, theta, loadDir, pos):
+        self.state = rodState.CAST
+        self.r = 10
+        self.m = 10
+        self.f = f
+        self.theta = theta #radians
+        self.loadDir = loadDir
+        self.pos = pos
+        
+        #used for euler intergration
+        self.v = vec(0,0) #depends on the rest of this stuff
+        
+    
+    def cycleState(self):
+        self.state = rodState((self.state.value % 3) + 1)
+        return self.state
+    
+    def castHelper(self):
+        if self.pos[1] > 650:
+            self.cycleState()
+        a = self.f / self.m
+        if self.loadDir == 'backwards':
+            self.v[0] = -math.pi*fishingRodLength/25/DT
+        else:
+            self.v[0] = math.pi*fishingRodLength/25/DT
+        self.v = self.v + a * DT
+        self.pos = self.pos + (self.v * DT)
+        self.f = vec(0,0)
+
+    def addGravity(self):
+        self.f += vec(0, int(G))
+
+    def eulerUpdate(self):
+        if self.state == rodState.REST: #do nothing (for now..)
+            pass
+        elif self.state == rodState.CAST: #kinematics
+            self.addGravity()
+            self.castHelper()
+        elif self.state == rodState.REEL: #polar
+            self.v = vec(0,0)
+
+    def draw(self):
+        x, y = self.pos[0], self.pos[1]
+        drawCircle(float(x), float(y), self.r)
+        #drawLine(float(x), float(y), int(Hook.pos[0]), int(Hook.pos[1]))
+
+    def __repr__(self):
+        return(self.state.name)
+    
 
 def onStep(app):
     if app.paused: return
-    app.hook.verletUpdate()
+    for object in app.objects:
+        object.eulerUpdate()
     
 
 def onKeyPress(app, key):
     if 'space' in key:
         app.hook.cycleState()
-        print(app.hook)
+        if app.hook.state == hookState.CASTED:
+            app.objects.append(Rod(app.hook.f, app.hook.theta, app.hook.loadDir, app.hook.pos))
+        
 
 def onKeyRelease(app, key): #can implement REAL fishing later...
     pass
-
 def onMousePress(app, mouseX, mouseY):
     pass
 def onMouseRelease(app, mouseX, mouseY):
@@ -131,8 +171,9 @@ def redrawAll(app):
     drawRect(float(catX), float(catY), 100, 100, align = 'center')
     drawRect(600, 650, 1000, 500, fill='blue') #ocean
     drawRect(600, 550, 1000, 500, fill='green', align='right-top')
-    #Draw Hook
-    app.hook.draw()
+    #Draw Hook and Rod
+    for object in app.objects:
+        object.draw()
 
 
 def main():
