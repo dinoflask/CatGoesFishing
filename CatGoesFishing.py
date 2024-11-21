@@ -1,86 +1,136 @@
 import numpy as np 
+from enum import Enum
 from cmu_graphics import *
+import math
 
-G = 9.8
-FPS = 100
-DT = 1/FPS
-
-#defines vectors
 def vec(x, y):
     return np.array([x, y])
+
+G = 10000
+FPS = 60
+DT = 1/60
+catPos = vec(500, 500)
+fishingRodLength = 100
+
+#defines vectors
+
 
 def distance(v1, v2):
     distVector = v1-v2
     return np.dot(distVector, distVector)**0.5
 
-catPos = vec(500, 500)
-class State:
-    def __init__(self, num): #Use Enum
-        if num == 1:
-            self.state = 'REST'
-        if num == 2:
-            self.state = 'LOAD'
-        if num == 3:
-            self.state = 'CAST'
-        if num == 4:
-            self.state = 'REEL'
-
-class Particle:
+class State(Enum):
+    REST = 1
+    LOAD = 2
+    CAST = 3
+    REEL = 4
+        
+class Hook():
     def __init__(self):
-        self.state = State(1).state
-        self.pos = vec(catPos[0] + 200, catPos[1])
+        self.state = State.REST
         self.r = 10
+        self.f = vec(0, 0)
+        self.m = 10
         self.theta = 0 #radians
+        self.loadDir = 'backwards'
+        self.pos = vec(catPos[0] + fishingRodLength*math.cos(self.theta), catPos[1] + fishingRodLength*math.sin(self.theta))
+        
+        #used for verlet integration
+        self.v = vec(0,0)
+        self.prevPos = self.pos - (self.v * DT)
+    
+    def cycleState(self):
+        self.state = State((self.state.value % 4) + 1)
+        return self.state
 
-    def rest(self):
-        self.state = State(1).state
+    def loadHelper(self):
+        if self.theta > math.pi:
+            self.loadDir = 'forwards'
+        if self.theta < 0:
+            self.loadDir = 'backwards'
+        if self.loadDir == 'backwards':
+            self.theta += math.pi/25
+        if self.loadDir == 'forwards':
+            self.theta -= math.pi/25
+        self.pos = vec(catPos[0] + fishingRodLength*math.cos(self.theta), catPos[1] - fishingRodLength*math.sin(self.theta))
 
-    def load(self):
-        self.state = State(2).state
+    def castHelper(self):
+        a = self.f / self.m
+        if self.loadDir == 'backwards':
+            self.v[0] = -math.pi*fishingRodLength/25/DT
+        else:
+            self.v[0] = math.pi*fishingRodLength/25/DT
+        self.v = self.v + a * DT
 
-    def cast(self):
-        self.state = State(3).state
+        self.prevPos = self.pos
+        self.pos = self.pos + (self.v * DT)
 
-    def reel(self):
-        self.state = State(4).state
+        print(self.f, self.v, self.pos)
+        self.f = vec(0,0)
+            
+    def addGravity(self):
+        self.f += vec(0, int(G))
+
+    def reelHelper(self):
+        pass
 
     def verletUpdate(self):
-        if self.state == 'REST': #do nothing (for now..)
+        if self.state == State.REST: #do nothing (for now..)
             pass
-        elif self.state == 'LOAD': #polar
+        elif self.state == State.LOAD: #polar
+            self.loadHelper()
+        elif self.state == State.CAST: #kinematics
+            self.addGravity()
+            self.castHelper()
+        elif self.state == State.REEL: #polar
+            self.v = vec(0,0)
             pass
-        elif self.state == 'CAST': #kinematics
-            pass
-        elif self.state == 'REEL': #polar
-            pass
-
-        #verlet update down here
-
-    
 
     def draw(self):
         x, y = self.pos[0], self.pos[1]
         drawCircle(float(x), float(y), self.r)
+    
+    def __repr__(self):
+        return(self.state.name)
 
 
 def onAppStart(app):
-    app.width, app.height = 1920, 1080
+    app.width, app.height = 3840, 2160
     app.paused = False
-    app.hook = Particle()
+    app.hook = Hook()
+    app.stepsPerSecond = 60
     resetApp(app)
 
 def resetApp(app):
-    app.particles = []
+    app.objects = []
 
 def onStep(app):
     if app.paused: return
     app.hook.verletUpdate()
+    print(app.hook.theta)
+
+def onKeyPress(app, key):
+    if 'space' in key:
+        app.hook.cycleState()
+        print(app.hook)
+
+def onKeyRelease(app, key): #can implement REAL fishing later...
+    pass
+
+def onMousePress(app, mouseX, mouseY):
+    pass
+def onMouseRelease(app, mouseX, mouseY):
+    pass
 
 def redrawAll(app):
     #Draw Cat
     catX, catY = catPos[0], catPos[1]
-    drawRect(float(catX), float(catY), 100, 100)
+    drawRect(float(catX), float(catY), 100, 100, align = 'center')
     #Draw Hook
     app.hook.draw()
 
-cmu_graphics.runApp()
+
+def main():
+    cmu_graphics.runApp()
+
+main()
