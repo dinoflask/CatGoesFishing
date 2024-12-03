@@ -89,6 +89,7 @@ class Rod():
 class hookState(Enum):
     #I got the idea of using multiple states ("state control") to handle the 
     #changing behavior of the fishing rod, from Vincent Boling, Class of 2028, Physics.
+    #BE MORE SPECIFIC ABOUT CITATION
     PULL = 1
     CAST = 2
     REEL = 3
@@ -176,7 +177,10 @@ class Fish():
     
     def moveHelper(self):
         if self.state == fishState.IDLE:
-            self.theta += random.random()*random.randint(-1, 1)
+            if self.pos[0] < 650:
+                self.theta += random.random()*random.randint(0, 1) #ensures fish do not run into land
+            else:
+                self.theta += random.random()*random.randint(-1, 1)
             self.pos += vec(int(2*math.cos(self.theta)), 0)
         #elif self.state == fishState.AGITATED:
         #    pass
@@ -189,7 +193,8 @@ class Fish():
 
     def draw(self):
         x, y = self.pos[0], self.pos[1]
-        drawCircle(float(x), float(y), self.size, fill = 'orange')
+        drawImage('kenney_fishPack/PNG/Default size/fishTile_077.png', float(x), float(y), align = 'center')
+        #drawCircle(float(x), float(y), self.size, fill = 'orange')
 
 
 class mustardFish(Fish):
@@ -205,7 +210,8 @@ class mustardFish(Fish):
 
     def draw(self):
         x, y = self.pos[0], self.pos[1]
-        drawCircle(float(x), float(y), self.size, fill = 'yellow')
+        drawImage('kenney_fishPack/PNG/Default size/fishTile_081.png', float(x), float(y), align = 'center', width = 125, height = 125)
+        #drawCircle(float(x), float(y), self.size, fill = 'yellow')
 
 class Quest:
     def __init__(self, species, amount, text):
@@ -244,11 +250,51 @@ def onAppStart(app):
     #app.tutorial1 = False
     app.quests = [Quest('Mustardfish', 1, 'Catch One Mustardfish!')]
     app.currentQuest = None
-
+    #Drawing land / ocean / seafloor using Multiple Boards
+    app.land = drawBoard('kenney_fishPack/PNG/Default size/fishTile_036.png', 7, 12, 0, 550, 600, 350)
+    app.ocean = drawBoard('kenney_fishPack/PNG/Default size/fishTile_089.png', 5, 17, 600, 650, 850, 250)
+    #Temporary Messages
+    app.lvl1Message = False
+    app.questCompletionMessage = False
     resetApp(app)
 
 def resetApp(app):
     app.objects = [app.rod]
+
+class drawBoard():
+    def __init__(self, image, rows, cols, boardLeft, boardTop, boardWidth, boardHeight):
+        self.image = image
+        self.rows = rows
+        self.cols = cols
+        self.boardLeft = boardLeft
+        self.boardTop = boardTop
+        self.boardWidth = boardWidth
+        self.boardHeight = boardHeight
+
+    def getCellSize(self):
+        cellWidth = self.boardWidth / self.cols
+        cellHeight = self.boardHeight / self.rows
+        return (cellWidth, cellHeight)
+
+    def getCellLeftTop(self, row, col):
+        cellWidth, cellHeight = self.getCellSize()
+        cellLeft = self.boardLeft + col * cellWidth
+        cellTop = self.boardTop + row * cellHeight
+        return (cellLeft, cellTop)
+
+    def drawCell(self, row, col): 
+        cellLeft, cellTop = self.getCellLeftTop(row, col)
+        cellWidth, cellHeight = self.getCellSize()
+        drawImage(f'{self.image}', cellLeft, cellTop, width = cellWidth, height = cellHeight)
+    
+    def drawBoard(self):
+        for row in range(self.rows):
+            for col in range(self.cols):
+                self.drawCell(row, col)
+
+    def draw(self):
+        self.drawBoard()
+    
 
 def fishAdder(app):
     if len(app.fish) < 3:
@@ -267,6 +313,12 @@ def onStep(app):
     #Fish Respawn
     fishAdder(app)
 
+    #Reset app.rod's hook object after you pull the Fish in
+    if app.rod.state == rodState.REST and len(app.objects) > 1: 
+            print('meow')
+            app.objects.pop()
+            app.rod.hook = None
+
     #Fish Catching
     for fish in app.fish:
         fish.eulerUpdate()
@@ -279,22 +331,28 @@ def onStep(app):
             fish.pos = app.rod.pos
     
     #Leveling System
-    if app.exp > app.levelExpNeeded:
+    if app.exp >= app.levelExpNeeded:
         app.exp -= app.levelExpNeeded
         app.level += 1
         app.levelExpNeeded += 100 * app.level
+        if app.level == 1:
+            app.lvl1Message = True
     
     #Quest Logic
     if app.currentQuest != None:
         if app.caughtFish != None and app.caughtFish.species == app.currentQuest.species and app.rod.state == rodState.REST:
             app.currentQuest.amount += 1
         if Quest.isComplete(app.currentQuest):
+            app.questCompletionMessage = True
             app.currentQuest = None
     
-        
+    
     
     
 def onKeyPress(app, key):
+    app.lvl1Message = False
+    app.questCompletionMessage = False
+
     if 'space' in key:
         if app.caughtFish != None:
             return
@@ -303,9 +361,6 @@ def onKeyPress(app, key):
             if app.rod.hook == None:
                 app.rod.hook = Hook(app.rod.f, app.rod.theta, app.rod.loadDir, app.rod.pos)
             app.objects.append(app.rod.hook)
-        if app.rod.hook != None and app.rod.hook.state == rodState.PULL: #Reset app.rod's hook object after you pull the Fish in
-            app.objects.pop()
-            app.rod.hook = None
     if 's' in key: #Selling Fish
         if app.currentQuest != None:
             print(app.currentQuest.text, app.currentQuest.amount)
@@ -326,9 +381,11 @@ def onKeyPress(app, key):
                     app.exp += 50
                     app.caughtFish = None
                     
-def onKeyRelease(app, key):
-    pass
+
 def onMousePress(app, mouseX, mouseY):
+    app.lvl1Message = False
+    app.questCompletedMessage = False
+
     #Menu buttons
     if app.startMenu == True:
         if 480 < mouseX < 960 and 333 < mouseY < 513:
@@ -345,41 +402,50 @@ def onMousePress(app, mouseX, mouseY):
 
 
 def redrawAll(app):
-
+    #Draw Backgrounds
+    app.land.draw()
+    app.ocean.draw()
     #Draw Cat
     catX, catY = catPos[0], catPos[1]
-    drawRect(float(catX), float(catY), 100, 100, align = 'center')
-    drawRect(600, 650, 1000, 500, fill='blue') #ocean
-    drawRect(600, 550, 1000, 500, fill='green', align='right-top')
+    drawImage('PC Computer - Stardew Valley - Cat White (1).png', float(catX), float(catY), align = 'center', width = 100, height = 100)
+    #drawRect(float(catX), float(catY), 100, 100, align = 'center')
     #Draw Hook and Rod
     for object in app.objects:
         object.draw()
     for fish in app.fish:
         fish.draw()
     #Draw Money and Levels
-    drawLabel(f'${app.money}', 1360, 50, size = 40)
-    drawLabel(f'exp is {app.exp}', 1300, 700, size = 40)
-    drawLabel(f'level is {app.level}', 1300, 500, size = 40)
+    drawLabel(f'${app.money}', 1300, 50, size = 60, font='caveat')
+    #drawLabel(f'exp is {app.exp}', 1300, 700, size = 40, font = 'caveat')
+    drawLabel(f'Lvl. {app.level}', 550, 820, size = 40, font = 'cinzel')
     if app.exp < app.levelExpNeeded and app.exp != 0:
-        drawRect(600, 800, 800 // (app.levelExpNeeded // app.exp), 40, fill = 'lightYellow') #exp bar goes from 0-800 pixels
+        drawRect(620, 800, 800 // (app.levelExpNeeded // app.exp), 40, fill = 'lightYellow') #exp bar goes from 0-800 pixels
     else:
-        drawRect(600, 800, 1, 40, fill = 'lightYellow') #exp bar goes from 0-800 pixels
-    drawRect(600, 800, 800, 40, fill = None, border = 'paleGoldenrod', borderWidth = 6)
+        drawRect(620, 800, 1, 40, fill = 'lightYellow') #exp bar goes from 0-800 pixels
+    drawRect(620, 800, 800, 40, fill = None, border = 'paleGoldenrod', borderWidth = 6)
     #Draw Caught Fish Info
     if app.caughtFish != None and app.rod.state == rodState.REST:
         drawLabel(f'{app.caughtFish.species}', app.width//2, app.height//2 - 150, size = 100)
         drawLabel(f'Worth ${app.caughtFish.value}', app.width//2, app.height//2 - 70, size = 50)
-    
+        drawLabel(f'Press S to sell', app.width//2, app.height//2, size = 20)
+
     #Quests
-    if app.level >= 1 and app.currentQuest == None:
+    if app.level >= 1 and app.currentQuest == None and app.questCompletionMessage == False:
         drawRect(1220, 120, 200, 180, fill = gradient('lemonChiffon', 'paleGoldenrod', start = 'top'))
-        drawLabel('new quest', 1220, 120, size = 20)
+        drawLabel('New Quest', 1320, 200, size = 40, align = 'center', font='caveat')
     if app.currentQuest != None:
-        drawLabel(f'{app.currentQuest.text}, {app.currentQuest.amount}/{app.currentQuest.amountNeeded}', app.width//2 + 680, app.height//2 + 340, align = 'right-top', size = 25)
-    #i was in the middle of drawing a shop button and then will go to onMousePress to finish that logic
+        drawLabel(f'{app.currentQuest.text} {app.currentQuest.amount}/{app.currentQuest.amountNeeded}', app.width//2 + 680, app.height//2 + 340, align = 'right-top', size = 25)
+    
+    
+    #Temporary Level-Up Messages
+    if app.lvl1Message == True and app.caughtFish == None:
+        drawLabel('Unlocked Rod Shop!', app.width//2, app.height//2 - 70, size = 50, font = 'caveat')
+    if app.questCompletionMessage == True and app.caughtFish == None:
+        drawLabel('Quest Completed!', app.width//2, app.height//2 - 70, size = 50, font = 'caveat')
+    #Buttons
     if app.level >= 1 and app.shopMenu == False:
         drawRect(40, 20, 200, 180, fill = gradient('lemonChiffon', 'paleGoldenrod', start = 'top'))
-        drawLabel('rods', 100, 80, size = 20)
+        drawLabel('Rods', 140, 100, size = 60, align = 'center', font = 'caveat')
 
     #Draw Menus
     if app.startMenu == True:
