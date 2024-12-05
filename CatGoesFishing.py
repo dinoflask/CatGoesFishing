@@ -4,15 +4,15 @@ from cmu_graphics import *
 import math
 import random
 
+#This function is from physics TA mini-lecture.
 def vec(x, y):
     return np.array([x, y])
 
 G = 10000
 FPS = 60
 DT = 1/60
-catPos = vec(500, 500) #The Cat will move later, and it will not be a global variable.
-fishingRodLength = 110
 
+#This function is from physics TA mini-lecture.
 def distance(v1, v2):
     distVector = v1-v2
     return np.dot(distVector, distVector)**0.5
@@ -25,22 +25,31 @@ class rodState(Enum):
 
 class Rod():
 
-    def __init__(self):
+    def __init__(self, catPos, name):
+        self.name = name
         self.hook = None
         self.state = rodState.REST
+        if self.name == 'Basic Rod':
+            self.fishingRodLength = 110
+            self.pullSpeed = 10
+        elif self.name == 'Good Rod':
+            self.fishingRodLength = 150
+            self.pullSpeed = 20
+        elif self.name == 'Power Rod':
+            self.fishingRodLength = 200
+            self.pullSpeed = 30
         self.r = 10
         self.f = vec(0, 0)
         self.m = 10
         self.theta = 0 #radians
         self.loadDir = 'backwards'
-        self.pos = vec(catPos[0] + fishingRodLength, catPos[1])
+        self.catPos = catPos
+        self.pos = vec(self.catPos[0] + self.fishingRodLength, self.catPos[1])
         #used for euler integration
-        self.v = vec(0,0)
-
+        self.v = vec(0,0) #This line is from physics TA mini-lecture.
         
     def cycleState(self):
-        
-        self.state = rodState((self.state.value % 4) + 1)
+        self.state = rodState((self.state.value % 4) + 1) #This line is from Google Search AI after I searched "How to switch Enum states".
         return self.state
 
     def loadHelper(self):
@@ -52,17 +61,17 @@ class Rod():
             self.theta += math.pi/25
         if self.loadDir == 'forwards':
             self.theta -= math.pi/25
-        self.pos = vec(catPos[0] + fishingRodLength*math.cos(self.theta), catPos[1] - fishingRodLength*math.sin(self.theta))
+        self.pos = vec(self.catPos[0] + self.fishingRodLength*math.cos(self.theta), self.catPos[1] - self.fishingRodLength*math.sin(self.theta))
   
     def castedHelper(self):
         if self.hook.theta <= -math.pi/2:
                 self.cycleState()
         if self.theta > 0: #let the rod stop undulating
                 self.theta -= math.pi/25
-                self.pos = vec(catPos[0] + fishingRodLength*math.cos(self.theta), catPos[1] - fishingRodLength*math.sin(self.theta))
+                self.pos = vec(self.catPos[0] + self.fishingRodLength*math.cos(self.theta), self.catPos[1] - self.fishingRodLength*math.sin(self.theta))
 
     def pullHelper(self):
-        if self.hook.pos[1] <= catPos[1]:
+        if self.hook.pos[1] <= self.catPos[1]:
             self.hook = None
             self.cycleState()
 
@@ -79,7 +88,7 @@ class Rod():
     def draw(self):
         x, y = self.pos[0], self.pos[1]
         drawCircle(float(x), float(y), self.r)
-        drawLine(float(x), float(y), int(catPos[0]), int(catPos[1]))
+        drawLine(float(x), float(y), int(self.catPos[0]), int(self.catPos[1]))
         if self.hook != None:
             drawLine(float(x), float(y), int(self.hook.pos[0]), int(self.hook.pos[1]))
     
@@ -88,22 +97,28 @@ class Rod():
 
 class hookState(Enum):
     #I got the idea of using multiple states ("state control") to handle the 
-    #changing behavior of the fishing rod, from Vincent Boling, Class of 2028, Physics.
-    #BE MORE SPECIFIC ABOUT CITATION
+    #changing behavior of the Hook, from Vincent Boling, Class of 2028, Physics.
+    #He gave me some pseudocode of switching BETWEEN polar and kinematics equations 
+    #as the rod changes states instead of using a universal real-time physics simulation 
+    #like I was originally going to do. He also suggested I use Enum.
+    #However, I added more states on top of his pseudocode such as 'REEL', 'PULL', implemented it completely on my own, and applied this method to other classes in an original way.
     PULL = 1
     CAST = 2
     REEL = 3
 
 class Hook():
 
-    def __init__(self, f, theta, loadDir, pos):
+    def __init__(self, f, theta, loadDir, pos, fishingRodLength, catPos, pullSpeed):
         self.state = hookState.CAST
         self.r = 10
         self.m = 10
         self.f = f
         self.theta = -math.pi/10 #radians
         self.loadDir = loadDir
+        self.catPos = catPos
         self.pos = pos
+        self.fishingRodLength = fishingRodLength
+        self.pullSpeed = pullSpeed
         
         #used for euler intergration
         self.v = vec(0,0) 
@@ -113,15 +128,15 @@ class Hook():
         return self.state
     
     def pullHelper(self):
-        if self.pos[1] >= catPos[1]:
-                self.pos -= vec(0, 10)
+        if self.pos[1] >= self.catPos[1]:
+                self.pos -= vec(0, self.pullSpeed)
     
     def castHelper(self):
         if self.pos[1] > 650:
             self.cycleState()
         a = self.f / self.m
         
-        self.v[0] = math.pi*fishingRodLength/25/DT
+        self.v[0] = math.pi*self.fishingRodLength/25/DT
         self.v = self.v + a * DT
         self.pos = self.pos + (self.v * DT)
         self.f = vec(0,0)
@@ -130,7 +145,7 @@ class Hook():
         if self.theta <= -math.pi/2:
             self.cycleState()
 
-        rodPos = (catPos[0] + fishingRodLength, catPos[1])
+        rodPos = (self.catPos[0] + self.fishingRodLength, self.catPos[1])
         reelRadius = distance(rodPos, self.pos)
         if self.theta > -math.pi/2:
             self.theta -= math.pi/150
@@ -229,7 +244,8 @@ class Quest:
 def onAppStart(app):
     app.width, app.height = 1440, 900
     app.paused = False
-    app.rod = Rod()
+    app.catPos = vec(500, 500) 
+    app.rod = Rod(app.catPos, 'Basic Rod')
     app.stepsPerSecond = 60
     #Leveling System
     app.money = 0
@@ -246,6 +262,7 @@ def onAppStart(app):
     #Menu System
     app.startMenu = False
     app.shopMenu = False
+    app.backButton = False
     #app.journalMenu = False
     #app.tutorial1 = False
     app.quests = [Quest('Mustardfish', 1, 'Catch One Mustardfish!')]
@@ -256,12 +273,11 @@ def onAppStart(app):
     #Temporary Messages
     app.lvl1Message = False
     app.questCompletionMessage = False
-    resetApp(app)
+    app.movableObjects = [app.rod]
+    app.boatMode = False
+    
 
-def resetApp(app):
-    app.objects = [app.rod]
-
-class drawBoard():
+class drawBoard(): #Credit: CMU CS Academy 2D Board Implementation
     def __init__(self, image, rows, cols, boardLeft, boardTop, boardWidth, boardHeight):
         self.image = image
         self.rows = rows
@@ -287,7 +303,7 @@ class drawBoard():
         cellWidth, cellHeight = self.getCellSize()
         drawImage(f'{self.image}', cellLeft, cellTop, width = cellWidth, height = cellHeight)
     
-    def drawBoard(self):
+    def drawBoard(self): 
         for row in range(self.rows):
             for col in range(self.cols):
                 self.drawCell(row, col)
@@ -306,17 +322,17 @@ def fishAdder(app):
                 app.fish.append(mustardFish(pos))
 
 def onStep(app):
-    if app.paused: return    
-    for object in app.objects:
-        object.eulerUpdate()
+    if app.paused: return
+    app.rod.eulerUpdate()
+    if app.rod.hook != None:
+        app.rod.hook.eulerUpdate()
 
     #Fish Respawn
     fishAdder(app)
 
     #Reset app.rod's hook object after you pull the Fish in
-    if app.rod.state == rodState.REST and len(app.objects) > 1: 
+    if app.rod.state == rodState.REST and app.rod.hook != None: 
             print('meow')
-            app.objects.pop()
             app.rod.hook = None
 
     #Fish Catching
@@ -346,9 +362,6 @@ def onStep(app):
             app.questCompletionMessage = True
             app.currentQuest = None
     
-    
-    
-    
 def onKeyPress(app, key):
     app.lvl1Message = False
     app.questCompletionMessage = False
@@ -359,8 +372,8 @@ def onKeyPress(app, key):
         app.rod.cycleState()
         if app.rod.state == rodState.CASTED: #Create a new hook object when you cast your rod
             if app.rod.hook == None:
-                app.rod.hook = Hook(app.rod.f, app.rod.theta, app.rod.loadDir, app.rod.pos)
-            app.objects.append(app.rod.hook)
+                app.rod.hook = Hook(app.rod.f, app.rod.theta, app.rod.loadDir, app.rod.pos, app.rod.fishingRodLength, app.catPos, app.rod.pullSpeed)
+                app.moveableObjects.append(app.rod.hook)
     if 's' in key: #Selling Fish
         if app.currentQuest != None:
             print(app.currentQuest.text, app.currentQuest.amount)
@@ -380,6 +393,12 @@ def onKeyPress(app, key):
                     print(app.caughtFish, app.pastFish)
                     app.exp += 50
                     app.caughtFish = None
+    if 'right' in key:
+        for object in app.moveableObjects:
+            object.pos += vec(10,0)
+    if 'left' in key:
+        for object in app.moveableObjects:
+            object.pos += vec(-10,0)
                     
 
 def onMousePress(app, mouseX, mouseY):
@@ -390,34 +409,47 @@ def onMousePress(app, mouseX, mouseY):
     if app.startMenu == True:
         if 480 < mouseX < 960 and 333 < mouseY < 513:
             app.startMenu = False
-    if app.level >= 1 and app.shopMenu == False:
-        if 40 < mouseX < 240 and 20 < mouseY < 200:
-            app.shopMenu = True
+    if app.backButton == True:
+        if 1220 < mouseX < 1420 and 610 < mouseY < 790:
+            app.shopMenu = False
+            app.backButton = False
+    if app.shopMenu == True:
+        if 40 < mouseX < 280 and 10 < mouseY < 330:
+            app.rod = Rod(app.catPos, 'Basic Rod')
+        if 295 < mouseX < 535 and 10 < mouseY < 330:
+            app.rod = Rod(app.catPos, 'Good Rod')
+        if 540 < mouseX < 790 and 10 < mouseY < 330:
+            app.rod = Rod(app.catPos, 'Power Rod')
 
     #Quest Button
     if app.level >= 1 and app.currentQuest == None and len(app.quests) != 0: 
         if 1220 < mouseX < 1420 and 120 < mouseY < 300:
             app.currentQuest = app.quests.pop()
-    
 
+def onMouseRelease(app, mouseX, mouseY):
+    if app.level >= 1 and app.shopMenu == False:
+        if 40 < mouseX < 240 and 20 < mouseY < 200:
+            app.shopMenu = True
+            app.backButton = True
 
 def redrawAll(app):
     #Draw Backgrounds
     app.land.draw()
     app.ocean.draw()
     #Draw Cat
-    catX, catY = catPos[0], catPos[1]
+    catX, catY = app.catPos[0], app.catPos[1]
     drawImage('PC Computer - Stardew Valley - Cat White (1).png', float(catX), float(catY), align = 'center', width = 100, height = 100)
     #drawRect(float(catX), float(catY), 100, 100, align = 'center')
     #Draw Hook and Rod
-    for object in app.objects:
-        object.draw()
+    app.rod.draw()
+    if app.rod.hook != None:
+        app.rod.hook.draw()
     for fish in app.fish:
         fish.draw()
     #Draw Money and Levels
     drawLabel(f'${app.money}', 1300, 50, size = 60, font='caveat')
     #drawLabel(f'exp is {app.exp}', 1300, 700, size = 40, font = 'caveat')
-    drawLabel(f'Lvl. {app.level}', 550, 820, size = 40, font = 'cinzel')
+    drawLabel(f'Lvl.{app.level}', 550, 820, size = 40, font = 'caveat')
     if app.exp < app.levelExpNeeded and app.exp != 0:
         drawRect(620, 800, 800 // (app.levelExpNeeded // app.exp), 40, fill = 'lightYellow') #exp bar goes from 0-800 pixels
     else:
@@ -446,6 +478,9 @@ def redrawAll(app):
     if app.level >= 1 and app.shopMenu == False:
         drawRect(40, 20, 200, 180, fill = gradient('lemonChiffon', 'paleGoldenrod', start = 'top'))
         drawLabel('Rods', 140, 100, size = 60, align = 'center', font = 'caveat')
+    if app.backButton == True:
+        drawRect(1220, 610, 200, 180, fill = gradient('lemonChiffon', 'paleGoldenrod', start = 'top'))
+        drawLabel('Back', 1320, 700, size = 40, align = 'center', font='caveat')
 
     #Draw Menus
     if app.startMenu == True:
@@ -457,15 +492,19 @@ def redrawAll(app):
         drawRect(40, 10, 240, 320, fill = gradient('lemonChiffon', 'paleGoldenrod', start = 'top'))
         drawRect(295, 10, 240, 320, fill = gradient('lemonChiffon', 'paleGoldenrod', start = 'top'))
         drawRect(550, 10, 240, 320, fill = gradient('lemonChiffon', 'paleGoldenrod', start = 'top'))
+        if app.rod.name == 'Basic Rod':
+            drawRect(40, 10, 240, 320, fill = 'lightYellow')
+        elif app.rod.name == 'Good Rod':
+            drawRect(295, 10, 240, 320, fill = 'lightYellow')
+        elif app.rod.name == 'Power Rod':
+            drawRect(550, 10, 240, 320, fill = 'lightYellow')
         drawLabel('Basic Rod', 60, 30, size = 30, align = 'left-top')
         drawLabel('Good Rod', 315, 30, size = 30, align = 'left-top')
         drawLabel('Power Rod', 570, 30, size = 30, align = 'left-top')
-        
         #image
         drawRect(60, 70, 200, 120, fill = 'darkKhaki')
         drawRect(315, 70, 200, 120, fill = 'darkKhaki')
         drawRect(570, 70, 200, 120, fill = 'darkKhaki')
-        
         #power bars
         drawRect(100, 210, 160, 25, fill = 'darkKhaki')
         drawRect(100, 245, 160, 25, fill = 'darkKhaki')
@@ -478,6 +517,13 @@ def redrawAll(app):
         drawRect(610, 210, 160, 25, fill = 'darkKhaki')
         drawRect(610, 245, 160, 25, fill = 'darkKhaki')
         drawRect(610, 280, 160, 25, fill = 'darkKhaki')
+
+        
+    
+        
+    
+
+
 
 def main():
     cmu_graphics.runApp()
