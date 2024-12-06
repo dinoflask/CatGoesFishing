@@ -12,14 +12,18 @@ def vec(x, y):
 G = 10000
 FPS = 60
 DT = 1/60
+#https://opengameart.org/content/fish-pack-0
 bckImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/624b4055-7b77-4099-8113-3c72abe73559.png')) #https://www.freepik.com/free-vector/natural-environment-lanscape-scene_5597221.htm#fromView=keyword&page=1&position=0&uuid=20cf8488-9d10-4e9d-8637-27addb17cb57
 blueFinImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/kenney_fishPack/PNG/Default size/fishTile_077.png'))
-boatImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/simple-historic-boat-illustration-45dd9d.png'))
+boatImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/simple-historic-boat-illustration-45dd9d.png')) #https://www.vexels.com/png-svg/preview/206225/simple-historic-boat-illustration
 mustardFishImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/kenney_fishPack/PNG/Default size/fishTile_081.png'))
 landImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/kenney_fishPack/PNG/Default size/fishTile_036.png'))
-oceanImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/kenney_fishPack/PNG/Default size/fishTile_089.png'))
-catImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/PC Computer - Stardew Valley - Cat White (1).png'))
-skyImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/SL-031821-41530-04.jpg'))
+oceanImage1 = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/kenney_fishPack/PNG/Default size/fishTile_088.png'))
+oceanImage2 = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/kenney_fishPack/PNG/Default size/fishTile_089.png'))
+catImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/PC Computer - Stardew Valley - Cat White (1).png')) #opengameart.org
+skyImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/SL-031821-41530-04-min.jpg')) #https://www.vecteezy.com/vector-art/4939146-sky-with-cloud-cartoon-background-vector-flat-style
+rockImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/kenney_fishPack/PNG/Default size/fishTile_084.png'))
+wallpaperImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/luanne-boudier-cat-fishing-art.jpg')) #https://www.artstation.com/artwork/5vKBYP
 
 #This function is from physics TA mini-lecture.
 def distance(v1, v2):
@@ -54,7 +58,6 @@ class Rod():
         self.loadDir = 'backwards'
         self.catPos = catPos
         self.pos = vec(self.catPos[0] + self.fishingRodLength, self.catPos[1])
-        #used for euler integration
         self.v = vec(0,0) #This line is from physics TA mini-lecture.
         
     def cycleState(self):
@@ -96,8 +99,8 @@ class Rod():
 
     def draw(self):
         x, y = self.pos[0], self.pos[1]
-        drawCircle(float(x), float(y), self.r)
-        drawLine(float(x), float(y), int(self.catPos[0]), int(self.catPos[1]))
+        drawCircle(float(x), float(y), self.r, fill = 'darkSlateGray')
+        drawLine(float(x), float(y), int(self.catPos[0]), int(self.catPos[1]), fill= 'saddleBrown', lineWidth = 3)
         if self.hook != None:
             drawLine(float(x), float(y), int(self.hook.pos[0]), int(self.hook.pos[1]))
     
@@ -175,7 +178,6 @@ class Hook():
     def draw(self):
         x, y = self.pos[0], self.pos[1]
         drawCircle(float(x), float(y), self.r)
-        #drawLine(float(x), float(y), int(Hook.pos[0]), int(Hook.pos[1]))
 
     def __repr__(self):
         return(self.state.name)
@@ -238,7 +240,6 @@ class mustardFish(Fish):
     def draw(self):
         x, y = self.pos[0], self.pos[1]
         drawImage(mustardFishImage, float(x), float(y), align = 'center', width = 125, height = 125, rotateAngle = self.rotateAngle)
-        #drawCircle(float(x), float(y), self.size, fill = 'yellow')
 
 class Quest:
     def __init__(self, species, amount, text):
@@ -282,7 +283,7 @@ def onAppStart(app):
     app.mediumFish = ["Mustardfish"]
     app.largeFish = []
     #Menu System
-    app.startMenu = False
+    app.startMenu = True
     app.shopMenu = False
     app.backButton = False
     #app.journalMenu = False
@@ -291,14 +292,15 @@ def onAppStart(app):
     app.currentQuest = None
     #Drawing land / ocean / seafloor using Multiple Boards
     app.land = drawBoard(landImage, 7, 12, 0, 550, 600, 350)
-    app.ocean = drawBoard(oceanImage, 5, 17, 600, 650, 850, 250)
-    app.bckX = -100
+    app.ocean = drawBoard(oceanImage2, 5, 40, 600, 650, 2000, 250)
+    app.bckX = -200
     app.skyX = -100
+    app.rockX = 100
     #Temporary Messages
+    app.lvl0Message = True
     app.lvl1Message = False
     app.lvl3Message = False
     app.questCompletionMessage = False
-
     app.boatMode = False
     app.boat = None
     
@@ -339,15 +341,23 @@ class drawBoard(): #Credit: CMU CS Academy 2D Board Implementation
     
 
 def fishAdder(app):
-    if len(app.fish) < 3:
+    
+    if app.level < 3:
+        spawnWidth = 1200
+        totalFish = 3
+    else:
+        spawnWidth = 1500
+        totalFish = 6
+    if len(app.fish) < totalFish:
         if random.randint(0, 60) == 0:
-            pos = vec(random.randint(900,1200), random.randint(700,800))
+            pos = vec(random.randint(900,spawnWidth), random.randint(700,800))
             if random.randint(0,1) == 0:
                 app.fish.append(Fish(pos))
             else:
                 app.fish.append(mustardFish(pos))
 
 def onStep(app):
+    print(app.catPos)
     if app.paused: return
     app.rod.eulerUpdate()
     if app.rod.hook != None:
@@ -403,13 +413,16 @@ def onStep(app):
         centerValue = -100
         app.land.boardLeft += centerValue
         app.ocean.boardLeft += centerValue
+        app.skyX += centerValue
+        app.bckX += centerValue
+        app.rockX += centerValue
         for fish in app.fish:
             fish.pos += vec(centerValue, 0)
         app.boatMode = True
     
     #Start Boat Mode
     if app.boatMode == True and app.boat != None and app.rod.state == rodState.REST:
-        app.catPos = app.boat.pos + vec(50, 50)
+        app.catPos = app.boat.pos + vec(-50, 50)
         #Make sure the rod knows where the cat is
         app.rod.catPos = app.catPos
         app.rod.pos = vec(app.catPos[0] + app.rod.fishingRodLength, app.catPos[1])
@@ -426,11 +439,12 @@ def onStep(app):
         app.boat = None
     
 
-    
-
-    
 def onKeyPress(app, key):
+    if 'l' in key:
+        app.exp += 100
+
     if app.caughtFish == None:
+        app.lvl0Message = False
         app.lvl1Message = False
         app.lvl3Message = False
         app.questCompletionMessage = False
@@ -458,7 +472,6 @@ def onKeyPress(app, key):
                             app.exp += 300
                         elif app.caughtFish.species in app.largeFish:
                             app.exp += 1000
-                    print(app.caughtFish, app.pastFish)
                     app.exp += 50
                     app.caughtFish = None
 
@@ -471,9 +484,10 @@ def onKeyHold(app, key):
             if 'left' in key:
                 scroll = 10
 
-            if not('left' in key and app.catPos[0] == 500) and (app.rod.state == rodState.REST): #Don't go off the edge, and don't move when you're fishing
+            if (not('left' in key and app.catPos[0] == 500)) and not(app.land.boardLeft == -760 and ('right' in key)) and (app.rod.state == rodState.REST): #Don't go off the edge, and don't move when you're fishing
                 app.skyX += scroll
                 app.bckX += scroll
+                app.rockX += scroll
                 app.catPos = app.catPos + vec(scroll, 0)
                 app.land.boardLeft += scroll
                 app.ocean.boardLeft += scroll
@@ -484,32 +498,34 @@ def onKeyHold(app, key):
         
 def onMousePress(app, mouseX, mouseY):
     if app.caughtFish == None:
+        app.lvl0Message = False
         app.lvl1Message = False
         app.lvl3Message = False
         app.questCompletedMessage = False
 
     #Menu buttons
     if app.startMenu == True:
-        if 480 < mouseX < 960 and 333 < mouseY < 513:
+        if 600 < mouseX < 840 and 678 < mouseY < 768:
             app.startMenu = False
-    if app.backButton == True:
+            app.lvl0Message = True
+    if app.backButton == True and app.boatMode != True:
         if 1220 < mouseX < 1420 and 610 < mouseY < 790:
             app.shopMenu = False
             app.backButton = False
-    if app.shopMenu == True:
+    if app.shopMenu == True and app.boatMode != True:
         if 40 < mouseX < 280 and 10 < mouseY < 330:
             app.rod = Rod(app.catPos, 'Basic Rod')
         if 295 < mouseX < 535 and 10 < mouseY < 330:
             app.rod = Rod(app.catPos, 'Good Rod')
         if 540 < mouseX < 790 and 10 < mouseY < 330:
             app.rod = Rod(app.catPos, 'Power Rod')
-    if True:#app.level >= 3 and app.boatMode != True:
+    if app.level >= 3 and app.boatMode != True and app.shopMenu != True:
         if 260 < mouseX < 460 and 20 < mouseY < 200:
+            app.rod.state = rodState.REST
             app.boat = Boat('Basic Boat')
     
-
     #Quest Button
-    if app.level >= 1 and app.currentQuest == None and len(app.quests) != 0: 
+    if app.level >= 1 and app.currentQuest == None and len(app.quests) != 0 and app.boatMode != True: 
         if 1220 < mouseX < 1420 and 120 < mouseY < 300:
             app.currentQuest = app.quests.pop()
 
@@ -520,15 +536,24 @@ def onMouseRelease(app, mouseX, mouseY):
             app.backButton = True
 
 def redrawAll(app):
+    if app.startMenu == True:
+        drawImage(wallpaperImage, 0, 0)
+        drawRect(app.width//2, app.height//2+300, 240, 90, align = 'center', fill = 'steelBlue')
+        drawLabel('Start Game', app.width//2, app.height//2+300, size = 50, align = 'center', font = 'caveat')
+        drawLabel('Welcome to Cat Goes Fishing!', app.width//2, app.height//2-300, size = 70, align = 'center', font = 'caveat')
+        drawLabel('Start out on an island with a basic rod. Progress into a master fisher-cat scouring the sea', app.width//2, app.height//2-200, size = 30, align = 'center', font = 'caveat') #Opening message is taken directly from the offical game. https://cat-goes-fishing.fandom.com/wiki/Cat_Goes_Fishing_Wiki
+        drawLabel('for the biggest and baddest fish. Each fish has unique behaviors that you will learn to exploit as you tailor', app.width//2, app.height//2-150, size = 30, align = 'center', font = 'caveat')
+        drawLabel('your arsenal of fishing rods to suit your style of play. Mrrrow!', app.width//2, app.height//2-100, size = 30, align = 'center', font = 'caveat')
+        return
     #Draw Backgrounds
-    drawImage(skyImage, app.width//2, app.height//2, align = 'center')
+    drawImage(skyImage, app.skyX, -600, width = 2333, height = 1333)
     drawImage(bckImage, app.bckX, 200, width = 2412, height = 570)
     app.land.draw()
+    drawImage(rockImage, app.rockX, 485)
     app.ocean.draw()
     #Draw Cat
     catX, catY = app.catPos[0], app.catPos[1]
     drawImage(catImage, float(catX), float(catY), align = 'center', width = 100, height = 100)
-    #drawRect(float(catX), float(catY), 100, 100, align = 'center')
     #Draw Hook and Rod
     app.rod.draw()
     if app.rod.hook != None:
@@ -551,14 +576,15 @@ def redrawAll(app):
         drawLabel(f'Press S to sell', app.width//2, app.height//2, size = 20)
 
     #Quests
-    if app.level >= 1 and app.currentQuest == None and app.questCompletionMessage == False:
+    if app.level >= 1 and app.currentQuest == None and app.questCompletionMessage == False and len(app.quests) > 0 and app.boatMode != True:
         drawRect(1220, 120, 200, 180, fill = gradient('lemonChiffon', 'paleGoldenrod', start = 'top'))
         drawLabel('New Quest', 1320, 200, size = 40, align = 'center', font='caveat')
     if app.currentQuest != None:
         drawLabel(f'{app.currentQuest.text} {app.currentQuest.amount}/{app.currentQuest.amountNeeded}', app.width//2 + 680, app.height//2 + 340, align = 'right-top', size = 25)
     
-    
     #Temporary Level-Up Messages
+    if app.lvl0Message == True:
+        drawLabel('Press Space to Begin Fishing. Go Forth, Young Cat!', app.width//2, app.height//2 - 70, size = 40, font = 'caveat')
     if app.lvl1Message == True and app.caughtFish == None:
         drawLabel('Unlocked Rod Shop!', app.width//2, app.height//2 - 70, size = 50, font = 'caveat')
     if app.lvl3Message == True and app.caughtFish == None:
@@ -566,21 +592,17 @@ def redrawAll(app):
     if app.questCompletionMessage == True and app.caughtFish == None and app.lvl3Message != True:
         drawLabel('Quest Completed!', app.width//2, app.height//2 - 70, size = 50, font = 'caveat')
     #Buttons
-    if app.level >= 1 and app.shopMenu == False:
+    if app.level >= 1 and app.shopMenu == False and app.boatMode != True:
         drawRect(40, 20, 200, 180, fill = gradient('lemonChiffon', 'paleGoldenrod', start = 'top'))
         drawLabel('Rods', 140, 100, size = 60, align = 'center', font = 'caveat')
-    if app.backButton == True:
+    if app.backButton == True and app.boatMode != True:
         drawRect(1220, 610, 200, 180, fill = gradient('lemonChiffon', 'paleGoldenrod', start = 'top'))
         drawLabel('Back', 1320, 700, size = 40, align = 'center', font='caveat')
-    if app.level >= 3 and app.boatMode != True:
+    if app.level >= 3 and app.boatMode != True and app.shopMenu != True:
         drawRect(260, 20, 200, 180, fill = gradient('lemonChiffon', 'paleGoldenrod', start = 'top'))
         drawLabel('Boat', 360, 100, size = 60, align = 'center', font = 'caveat')
 
     #Draw Menus
-    if app.startMenu == True:
-        drawRect(app.width//2, app.height//2, 480, 180, align = 'center', fill = 'steelBlue')
-        drawLabel('Start Game', app.width//2, app.height//2, size = 50, align = 'center', font = 'cinzel')
-        return
     if app.shopMenu == True:
         #Fishing Rod Upgrades
         drawRect(40, 10, 240, 320, fill = gradient('lemonChiffon', 'paleGoldenrod', start = 'top'))
@@ -612,18 +634,10 @@ def redrawAll(app):
         drawRect(610, 245, 160, 25, fill = 'darkKhaki')
         drawRect(610, 280, 160, 25, fill = 'darkKhaki')
 
-    
-
-        
-    
-        
-    
-
-
+    if app.boatMode == True:
+        app.boat.draw()
 
 def main():
     cmu_graphics.runApp()
 
 main()
-
-
