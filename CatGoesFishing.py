@@ -24,6 +24,9 @@ catImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/P
 skyImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/SL-031821-41530-04-min.jpg')) #https://www.vecteezy.com/vector-art/4939146-sky-with-cloud-cartoon-background-vector-flat-style
 rockImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/kenney_fishPack/PNG/Default size/fishTile_084.png'))
 wallpaperImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/luanne-boudier-cat-fishing-art.jpg')) #https://www.artstation.com/artwork/5vKBYP
+basicRodImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/Screenshot 2024-12-06 at 1.25.25 PM.png')) #Rod images taken from the official game. https://cat-goes-fishing.fandom.com/wiki/Fishing_Rods
+goodRodImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/Screenshot 2024-12-06 at 1.25.32 PM.png'))
+powerRodImage = CMUImage(Image.open('/Users/kyleluo/Documents/GitHub/CatGoesFishing/Screenshot 2024-12-06 at 1.25.37 PM.png'))
 
 #This function is from physics TA mini-lecture.
 def distance(v1, v2):
@@ -45,12 +48,15 @@ class Rod():
         if self.name == 'Basic Rod':
             self.fishingRodLength = 110
             self.pullSpeed = 10
+            self.fill = 'saddleBrown'
         elif self.name == 'Good Rod':
             self.fishingRodLength = 150
             self.pullSpeed = 20
+            self.fill = 'silver'
         elif self.name == 'Power Rod':
             self.fishingRodLength = 200
             self.pullSpeed = 30
+            self.fill= 'brown'
         self.r = 10
         self.f = vec(0, 0)
         self.m = 10
@@ -100,7 +106,7 @@ class Rod():
     def draw(self):
         x, y = self.pos[0], self.pos[1]
         drawCircle(float(x), float(y), self.r, fill = 'darkSlateGray')
-        drawLine(float(x), float(y), int(self.catPos[0]), int(self.catPos[1]), fill= 'saddleBrown', lineWidth = 3)
+        drawLine(float(x), float(y), int(self.catPos[0]), int(self.catPos[1]), fill = self.fill, lineWidth = 3)
         if self.hook != None:
             drawLine(float(x), float(y), int(self.hook.pos[0]), int(self.hook.pos[1]))
     
@@ -618,21 +624,29 @@ def redrawAll(app):
         drawLabel('Good Rod', 315, 30, size = 30, align = 'left-top')
         drawLabel('Power Rod', 570, 30, size = 30, align = 'left-top')
         #image
-        drawRect(60, 70, 200, 120, fill = 'darkKhaki')
-        drawRect(315, 70, 200, 120, fill = 'darkKhaki')
-        drawRect(570, 70, 200, 120, fill = 'darkKhaki')
+        drawImage(basicRodImage, 60, 70, width = 200, height = 120)
+        drawImage(goodRodImage, 315, 70, width = 200, height = 120)
+        drawImage(powerRodImage, 570, 70, width = 200, height = 120)
+        #drawRect(60, 70, 200, 120, fill = 'darkKhaki')
+        #drawRect(315, 70, 200, 120, fill = 'darkKhaki')
+        #drawRect(570, 70, 200, 120, fill = 'darkKhaki')
         #power bars
-        drawRect(100, 210, 160, 25, fill = 'darkKhaki')
-        drawRect(100, 245, 160, 25, fill = 'darkKhaki')
-        drawRect(100, 280, 160, 25, fill = 'darkKhaki')
+        drawLabel('Power', 70, 220, align ='center')
+        drawLabel('Speed', 70, 255, align ='center')
+        drawRect(100, 210, 70, 25, fill = 'darkKhaki')
+        drawRect(100, 245, 50, 25, fill = 'darkKhaki')
         
-        drawRect(355, 210, 160, 25, fill = 'darkKhaki')
-        drawRect(355, 245, 160, 25, fill = 'darkKhaki')
-        drawRect(355, 280, 160, 25, fill = 'darkKhaki')
+            
+        drawLabel('Power', 325, 220, align ='center')
+        drawLabel('Speed', 325, 255, align ='center')
+        drawRect(355, 210, 115, 25, fill = 'darkKhaki')
+        drawRect(355, 245, 90, 25, fill = 'darkKhaki')
         
+        
+        drawLabel('Power', 580, 220, align ='center')
+        drawLabel('Speed', 580, 255, align ='center')
         drawRect(610, 210, 160, 25, fill = 'darkKhaki')
-        drawRect(610, 245, 160, 25, fill = 'darkKhaki')
-        drawRect(610, 280, 160, 25, fill = 'darkKhaki')
+        drawRect(610, 245, 130, 25, fill = 'darkKhaki')
 
     if app.boatMode == True:
         app.boat.draw()
